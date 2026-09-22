@@ -23,3 +23,8 @@ npm-debug.log*
 
 # Server build output
 server/dist/
+
+# Release signing credentials
+keystore.properties
+*.jks
+*.keystore

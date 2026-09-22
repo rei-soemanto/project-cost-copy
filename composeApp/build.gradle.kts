@@ -1,12 +1,30 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /**
- * API base URL baked into the Android build. Defaults to 10.0.2.2, the emulator's
- * alias for the host machine. For a physical device on the same network:
- *   ./gradlew installDebug -PapiBaseUrl=http://192.168.1.10:3000/api/v1/
+ * API base URL baked into the Android build.
+ *
+ * - debug:   a local dev server. Defaults to 10.0.2.2, the emulator's alias for
+ *            the host machine. For a physical phone on the same Wi-Fi:
+ *              ./gradlew installDebug -PapiBaseUrl=http://192.168.1.10:3000/api/v1/
+ * - release: the production server.
+ *
+ * -PapiBaseUrl=... overrides both.
  */
-val apiBaseUrl: String = providers.gradleProperty("apiBaseUrl").getOrElse("http://10.0.2.2:3000/api/v1/")
+val apiBaseUrlOverride: String? = providers.gradleProperty("apiBaseUrl").orNull
+val debugApiBaseUrl: String = apiBaseUrlOverride ?: "http://10.0.2.2:3000/api/v1/"
+val releaseApiBaseUrl: String = apiBaseUrlOverride ?: "https://project.thewkm.com/api/v1/"
+
+/**
+ * Release signing credentials, read from keystore.properties at the repository
+ * root. That file is gitignored and points at a keystore kept outside the
+ * repository. Without it, release builds are produced unsigned.
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -89,18 +107,30 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+    }
 
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+    signingConfigs {
+        if (keystoreProperties.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         debug {
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
             // Plain http:// to a local dev server. Any host, so a LAN IP works too.
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiBaseUrl\"")
             // Release builds must talk HTTPS.
             manifestPlaceholders["usesCleartextTraffic"] = "false"
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
