@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
+import com.costproject.app.ui.view.common.AmountField
 import com.costproject.app.ui.view.common.FormField
 
 @Composable
@@ -54,11 +55,11 @@ fun ProjectInfoDialog(
                     label = "Penanggung Jawab Customer",
                     placeholder = "Nama PIC customer"
                 )
-                FormField(
+                AmountField(
                     value = contract,
                     onValueChange = { contract = it },
                     label = "Harga Kontrak",
-                    placeholder = "Contoh: 50000000"
+                    placeholder = "Contoh: 50.000.000"
                 )
                 if (showError) {
                     Text(

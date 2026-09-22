@@ -12,10 +12,15 @@ import com.costproject.app.data.remote.createHttpEngine
 import com.costproject.app.data.remote.createPublicHttpClient
 import com.costproject.app.data.remote.defaultApiBaseUrl
 import com.costproject.app.data.repository.AuthRepository
+import com.costproject.app.data.repository.DefaultAuthRepository
+import com.costproject.app.data.repository.DefaultProjectRepository
 import com.costproject.app.data.repository.ProjectRepository
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Manual dependency injection, following the reference project: builds the
@@ -34,9 +39,16 @@ class AppContainer(
 ) {
     val tokenStorage: TokenStorage = SettingsTokenStorage(secureSettings)
 
+    /**
+     * Outlives every screen. A save still in flight when the user navigates away
+     * finishes here instead of being cancelled along with the screen's
+     * ViewModel. SupervisorJob so one failed save cannot cancel the others.
+     */
+    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     private val authApi = AuthApiService(createPublicHttpClient(engine, baseUrl, enableHttpLogging))
 
-    // The authenticated client and AuthRepository refer to each other: the
+    // The authenticated client and the auth repository refer to each other: the
     // client asks the repository to refresh, the repository clears the client's
     // token cache. Both are lazy and each touches the other only when invoked,
     // after construction, so there is no initialisation cycle.
@@ -45,17 +57,19 @@ class AppContainer(
             engine = engine,
             baseUrl = baseUrl,
             tokenStorage = tokenStorage,
-            refreshSession = { authRepository.refreshSession(it) },
+            refreshSession = { defaultAuthRepository.refreshSession(it) },
             enableLogging = enableHttpLogging,
             maxRetries = httpMaxRetries
         )
     }
 
-    val authRepository: AuthRepository by lazy {
-        AuthRepository(authApi, tokenStorage, onSessionChanged = { authenticatedClient.clearCachedBearerTokens() })
+    private val defaultAuthRepository: DefaultAuthRepository by lazy {
+        DefaultAuthRepository(authApi, tokenStorage, onSessionChanged = { authenticatedClient.clearCachedBearerTokens() })
     }
 
+    val authRepository: AuthRepository get() = defaultAuthRepository
+
     val projectRepository: ProjectRepository by lazy {
-        ProjectRepository(ProjectApiService(authenticatedClient), LegacyProjectStore(legacySettings))
+        DefaultProjectRepository(ProjectApiService(authenticatedClient), LegacyProjectStore(legacySettings))
     }
 }

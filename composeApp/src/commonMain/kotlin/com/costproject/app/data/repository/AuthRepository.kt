@@ -11,29 +11,38 @@ import com.costproject.app.domain.model.User
 import io.ktor.client.plugins.ClientRequestException
 import kotlinx.coroutines.flow.StateFlow
 
+/** The signed-in session. ViewModels depend on this interface, so tests can fake it. */
+interface AuthRepository {
+    /** False once the session ends - by logout or by a rejected refresh. */
+    val hasSession: StateFlow<Boolean>
+    val currentUser: User?
+    suspend fun register(fullName: String, email: String, password: String): Result<User>
+    suspend fun login(email: String, password: String): Result<User>
+    fun logout()
+}
+
 /**
- * Owns the signed-in session.
+ * Server-backed [AuthRepository].
  *
  * @param onSessionChanged called after login and logout so the authenticated
  *   HTTP client drops the tokens it has cached in memory.
  */
-class AuthRepository(
+class DefaultAuthRepository(
     private val api: AuthApiService,
     private val tokenStorage: TokenStorage,
     private val onSessionChanged: () -> Unit
-) {
-    /** False once the session ends - by logout or by a rejected refresh. */
-    val hasSession: StateFlow<Boolean> get() = tokenStorage.hasSession
+) : AuthRepository {
+    override val hasSession: StateFlow<Boolean> get() = tokenStorage.hasSession
 
-    val currentUser: User? get() = tokenStorage.loadUser()
+    override val currentUser: User? get() = tokenStorage.loadUser()
 
-    suspend fun register(fullName: String, email: String, password: String): Result<User> =
+    override suspend fun register(fullName: String, email: String, password: String): Result<User> =
         safeApiCall { api.register(RegisterRequest(fullName.trim(), email.trim(), password)) }.map(::startSession)
 
-    suspend fun login(email: String, password: String): Result<User> =
+    override suspend fun login(email: String, password: String): Result<User> =
         safeApiCall { api.login(LoginRequest(email.trim(), password)) }.map(::startSession)
 
-    fun logout() {
+    override fun logout() {
         tokenStorage.clear()
         onSessionChanged()
     }

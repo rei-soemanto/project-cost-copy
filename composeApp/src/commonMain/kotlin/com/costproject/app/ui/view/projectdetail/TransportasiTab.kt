@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import com.costproject.app.domain.model.Transportasi
 import com.costproject.app.ui.view.common.AmountField
 import com.costproject.app.ui.view.common.FormField
-import com.costproject.app.ui.viewmodel.ProjectViewModel
+import com.costproject.app.domain.model.Project
 
 @Composable
 fun TransportasiTab(
@@ -21,8 +21,8 @@ fun TransportasiTab(
         totalOf = { it.nilaiBiaya },
         onAdd = onAdd,
         onRemove = onRemove,
-        maxItems = ProjectViewModel.MAX_TRANSPORTASI,
-        maxReachedLabel = "Maksimal ${ProjectViewModel.MAX_TRANSPORTASI} kolom transportasi tercapai"
+        maxItems = Project.MAX_TRANSPORTASI,
+        maxReachedLabel = "Maksimal ${Project.MAX_TRANSPORTASI} kolom transportasi tercapai"
     ) { transport ->
         FormField(
             value = transport.keterangan,

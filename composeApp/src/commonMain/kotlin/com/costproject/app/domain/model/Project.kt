@@ -2,9 +2,7 @@ package com.costproject.app.domain.model
 
 import com.costproject.app.ui.util.parseQuantity
 import com.costproject.app.ui.util.parseRupiah
-import com.costproject.app.util.todayLabel
 import kotlin.random.Random
-import kotlinx.serialization.Serializable
 
 /**
  * Client-generated identifier. Strings rather than random Longs so the server can
@@ -26,7 +24,6 @@ internal fun newId(): String {
  * recomposition — and nothing ever mutated them anyway, since all updates go
  * through `copy()`.
  */
-@Serializable
 data class Jasa(
     val id: String = newId(),
     val scope: String = "",
@@ -36,7 +33,6 @@ data class Jasa(
     val nilaiHarga: Long get() = harga.parseRupiah()
 }
 
-@Serializable
 data class Barang(
     val id: String = newId(),
     val nama: String = "",
@@ -46,7 +42,6 @@ data class Barang(
     val total: Long get() = quantity.parseQuantity() * hargaSatuan.parseRupiah()
 }
 
-@Serializable
 data class Transportasi(
     val id: String = newId(),
     val keterangan: String = "",
@@ -55,7 +50,6 @@ data class Transportasi(
     val nilaiBiaya: Long get() = biaya.parseRupiah()
 }
 
-@Serializable
 data class LainLain(
     val id: String = newId(),
     val keterangan: String = "",
@@ -64,7 +58,6 @@ data class LainLain(
     val nilaiBiaya: Long get() = biaya.parseRupiah()
 }
 
-@Serializable
 data class Project(
     val id: String = newId(),
     val name: String = "",
@@ -75,7 +68,8 @@ data class Project(
     val listBarang: List<Barang> = listOf(Barang()),
     val listTransportasi: List<Transportasi> = emptyList(),
     val listLainLain: List<LainLain> = emptyList(),
-    val createdAt: String = todayLabel()
+    /** Display label such as "22 Sep 2026", set from the server's timestamp. Empty until saved. */
+    val createdAt: String = ""
 ) {
     val nilaiKontrak: Long get() = hargaKontrak.parseRupiah()
 
@@ -93,4 +87,9 @@ data class Project(
 
     /** True when the user has entered a contract value, so the UI can show "-" instead of Rp0. */
     val hasKontrak: Boolean get() = hargaKontrak.isNotBlank()
+
+    companion object {
+        /** Maximum transportasi rows per project. The server enforces the same limit. */
+        const val MAX_TRANSPORTASI = 20
+    }
 }

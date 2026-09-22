@@ -7,15 +7,38 @@ import com.costproject.app.data.mapper.ProjectMapper
 import com.costproject.app.data.remote.ProjectApiService
 import com.costproject.app.data.remote.safeApiCall
 import com.costproject.app.domain.model.Project
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
- * Projects, backed by the server. Every method returns a [Result] whose failure
- * is always a [DataError].
+ * The user's projects. Every method returns a [Result] whose failure is always a
+ * [DataError]. ViewModels depend on this interface, so tests can fake it.
  */
-class ProjectRepository(
+interface ProjectRepository {
+    /** Emits after every successful write, so screens showing project data know to refresh. */
+    val changes: Flow<Unit>
+
+    suspend fun list(): Result<List<Project>>
+    suspend fun get(id: String): Result<Project>
+    suspend fun create(project: Project): Result<Project>
+    suspend fun updateInfo(id: String, name: String, customer: String, pic: String, hargaKontrak: String): Result<Project>
+    /** Replaces the project's whole item list. What the editor's autosave calls. */
+    suspend fun saveItems(project: Project): Result<Project>
+    suspend fun delete(id: String): Result<Unit>
+}
+
+/** Server-backed [ProjectRepository]. */
+class DefaultProjectRepository(
     private val api: ProjectApiService,
     private val legacyStore: LegacyProjectStore
-) {
+) : ProjectRepository {
+
+    // Only "something changed" matters, never how many times: a one-slot buffer
+    // that drops the older signal means emitting never suspends or fails.
+    private val _changes = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    override val changes: Flow<Unit> = _changes.asSharedFlow()
 
     /**
      * All of the user's projects, newest first.
@@ -24,23 +47,23 @@ class ProjectRepository(
      * server. That runs here, on the first list after sign-in, so existing work
      * appears in the user's account without a separate migration step.
      */
-    suspend fun list(): Result<List<Project>> {
+    override suspend fun list(): Result<List<Project>> {
         importLegacyProjects()
         return safeApiCall { api.list().map { ProjectMapper.toDomain(it) } }
     }
 
-    suspend fun get(id: String): Result<Project> =
+    override suspend fun get(id: String): Result<Project> =
         safeApiCall { ProjectMapper.toDomain(api.get(id)) }
 
-    suspend fun create(project: Project): Result<Project> {
+    override suspend fun create(project: Project): Result<Project> {
         val result = safeApiCall { ProjectMapper.toDomain(api.create(ProjectMapper.toCreateRequest(project))) }
         // The HTTP client retries on timeouts. If the first attempt did land,
         // the retry answers 409 for our own id - the project exists, so fetch it.
-        if (result.exceptionOrNull() is DataError.Conflict) return get(project.id)
-        return result
+        if (result.exceptionOrNull() is DataError.Conflict) return get(project.id).alsoSignalChange()
+        return result.alsoSignalChange()
     }
 
-    suspend fun updateInfo(
+    override suspend fun updateInfo(
         id: String,
         name: String,
         customer: String,
@@ -48,19 +71,20 @@ class ProjectRepository(
         hargaKontrak: String
     ): Result<Project> = safeApiCall {
         ProjectMapper.toDomain(api.update(id, ProjectMapper.toUpdateRequest(name, customer, pic, hargaKontrak)))
-    }
+    }.alsoSignalChange()
 
-    /** Replaces the project's whole item list. What the editor's autosave calls. */
-    suspend fun saveItems(project: Project): Result<Project> = safeApiCall {
+    override suspend fun saveItems(project: Project): Result<Project> = safeApiCall {
         ProjectMapper.toDomain(api.replaceItems(project.id, ReplaceItemsRequest(ProjectMapper.toItemDtos(project))))
-    }
+    }.alsoSignalChange()
 
-    suspend fun delete(id: String): Result<Unit> {
+    override suspend fun delete(id: String): Result<Unit> {
         val result = safeApiCall { api.delete(id) }
         // Already gone - e.g. a retried delete whose first attempt succeeded.
         if (result.exceptionOrNull() is DataError.NotFound) return Result.success(Unit)
-        return result
+        return result.alsoSignalChange()
     }
+
+    private fun <T> Result<T>.alsoSignalChange(): Result<T> = also { if (it.isSuccess) _changes.tryEmit(Unit) }
 
     /**
      * Uploads legacy on-device projects, removing each from the device only once

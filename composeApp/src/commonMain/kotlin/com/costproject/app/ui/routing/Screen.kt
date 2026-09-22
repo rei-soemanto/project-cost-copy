@@ -7,10 +7,10 @@ package com.costproject.app.ui.routing
  */
 sealed class Screen(val route: String) {
 
-    /** Login / register. Wired up in Phase 7 once AuthViewModel exists. */
+    /** Login / register. The start destination when there is no session. */
     data object Auth : Screen("auth")
 
-    /** Project list, the start destination while there is no auth gate. */
+    /** Project list. The start destination when signed in. */
     data object ProjectList : Screen("projects")
 
     data object ProjectDetail : Screen("project_detail/{$ARG_PROJECT_ID}") {
