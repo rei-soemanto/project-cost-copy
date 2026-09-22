@@ -13,6 +13,14 @@ describe("loadConfig", () => {
     expect(config.nodeEnv).toBe("development");
     expect(config.corsOrigins).toEqual([]);
     expect(config.passwordHashRounds).toBe(12);
+    expect(config.host).toBe("0.0.0.0");
+    expect(config.trustProxy).toBe(0);
+  });
+
+  it("reads HOST and TRUST_PROXY for running behind a reverse proxy", () => {
+    const config = loadConfig({ ...valid, HOST: "127.0.0.1", TRUST_PROXY: "1" });
+    expect(config.host).toBe("127.0.0.1");
+    expect(config.trustProxy).toBe(1);
   });
 
   it("parses a comma-separated CORS list, ignoring blanks", () => {

@@ -138,6 +138,19 @@ describe("credential rate limiting", () => {
     expect(res.body.error.code).toBe("RATE_LIMITED");
   });
 
+  it("behind a trusted proxy, limits each client separately by X-Forwarded-For", async () => {
+    const { app } = buildTestApp({ credentialLimiter: defaultCredentialLimiter() });
+    app.set("trust proxy", 1);
+    const http = (await import("supertest")).default(app);
+    const attempt = (ip: string) =>
+      http.post("/api/v1/auth/login").set("X-Forwarded-For", ip).send({ email: "x@example.com", password: "wrong" });
+
+    for (let i = 0; i < 20; i++) await attempt("203.0.113.1").expect(401);
+    await attempt("203.0.113.1").expect(429);
+    // A different user behind the same nginx is not locked out.
+    await attempt("203.0.113.2").expect(401);
+  });
+
   it("does not limit /refresh", async () => {
     const { http } = buildTestApp({ credentialLimiter: defaultCredentialLimiter() });
     for (let i = 0; i < 25; i++) {

@@ -17,7 +17,7 @@ export interface AppDeps {
   config: Pick<
     AppConfig,
     "jwtAccessSecret" | "accessTokenTtlSeconds" | "refreshTokenTtlSeconds" | "passwordHashRounds" | "corsOrigins"
-  >;
+  > & { trustProxy?: number };
   users: UserRepository;
   refreshTokens: RefreshTokenRepository;
   projects: ProjectRepository;
@@ -49,6 +49,7 @@ export function createApp(deps: AppDeps): Express {
   const projectService = new ProjectService(deps.projects);
 
   const app = express();
+  if (deps.config.trustProxy) app.set("trust proxy", deps.config.trustProxy);
   app.use(helmet());
   // The Android app is not a browser and ignores CORS; this only affects web clients.
   app.use(cors({ origin: deps.config.corsOrigins.length > 0 ? deps.config.corsOrigins : false }));

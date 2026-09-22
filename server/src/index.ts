@@ -14,8 +14,8 @@ const app = createApp({
   projects: new PgProjectRepository(pool),
 });
 
-const server = app.listen(config.port, () => {
-  console.log(`CostProject API listening on http://localhost:${config.port} (${config.nodeEnv})`);
+const server = app.listen(config.port, config.host, () => {
+  console.log(`CostProject API listening on http://${config.host}:${config.port} (${config.nodeEnv})`);
 });
 
 // Stop accepting connections, let in-flight requests finish, then close the pool.
