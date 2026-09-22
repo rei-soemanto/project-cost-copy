@@ -58,8 +58,8 @@ fun HomeTopBar() {
 fun ProjectHomeScreen(
     projects: List<Project>,
     onCreate: (String, String, String, String) -> Unit,
-    onOpen: (Long) -> Unit,
-    onDelete: (Long) -> Unit,
+    onOpen: (String) -> Unit,
+    onDelete: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showCreate by remember { mutableStateOf(false) }

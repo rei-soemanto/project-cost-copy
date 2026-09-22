@@ -120,7 +120,7 @@ fun RekapTab(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SummaryRow(
                         "Harga Kontrak",
-                        if (project.hargaKontrak.isBlank()) "-" else project.nilaiKontrak.formatRupiah()
+                        if (!project.hasKontrak) "-" else project.nilaiKontrak.formatRupiah()
                     )
                     SummaryRow("Total Biaya", project.grandTotal.formatRupiah())
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -136,14 +136,14 @@ fun RekapTab(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = if (project.hargaKontrak.isBlank()) "-"
+                            text = if (!project.hasKontrak) "-"
                             else project.sisaKontrak.formatRupiah(),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = if (project.sisaKontrak >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                         )
                     }
-                    if (project.hargaKontrak.isNotBlank()) {
+                    if (project.hasKontrak) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (project.sisaKontrak >= 0)

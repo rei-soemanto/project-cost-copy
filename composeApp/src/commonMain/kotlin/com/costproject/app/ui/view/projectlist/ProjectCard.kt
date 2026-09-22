@@ -97,7 +97,7 @@ fun ProjectCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (project.hargaKontrak.isBlank()) "-" else project.nilaiKontrak.formatRupiah(),
+                    text = if (!project.hasKontrak) "-" else project.nilaiKontrak.formatRupiah(),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -112,7 +112,7 @@ fun ProjectCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (project.hargaKontrak.isBlank()) "-" else project.sisaKontrak.formatRupiah(),
+                    text = if (!project.hasKontrak) "-" else project.sisaKontrak.formatRupiah(),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                     color = if (project.sisaKontrak >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error

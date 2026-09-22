@@ -9,7 +9,6 @@ import com.costproject.app.domain.model.Jasa
 import com.costproject.app.domain.model.LainLain
 import com.costproject.app.domain.model.Project
 import com.costproject.app.domain.model.Transportasi
-import com.costproject.app.ui.util.formatRupiah
 import com.russhwolf.settings.Settings
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -23,7 +22,10 @@ class ProjectViewModel : ViewModel() {
     }
 
     var projects by mutableStateOf(listOf<Project>())
-    var activeProjectId by mutableStateOf<Long?>(null)
+        private set
+
+    var activeProjectId by mutableStateOf<String?>(null)
+        private set
 
     init {
         loadFromDisk()
@@ -31,6 +33,8 @@ class ProjectViewModel : ViewModel() {
 
     val activeProject: Project?
         get() = projects.find { it.id == activeProjectId }
+
+    // --- Project lifecycle -------------------------------------------------
 
     fun createProject(name: String, customer: String, pic: String, hargaKontrak: String) {
         val project = Project(
@@ -44,7 +48,7 @@ class ProjectViewModel : ViewModel() {
         saveToDisk()
     }
 
-    fun openProject(id: Long) {
+    fun openProject(id: String) {
         activeProjectId = id
     }
 
@@ -52,135 +56,90 @@ class ProjectViewModel : ViewModel() {
         activeProjectId = null
     }
 
-    fun deleteProject(id: Long) {
+    fun deleteProject(id: String) {
         projects = projects.filterNot { it.id == id }
         if (activeProjectId == id) activeProjectId = null
         saveToDisk()
     }
 
-    fun updateProjectInfo(field: String, value: String) {
-        updateActive { project ->
-            project.copy(
-                name = if (field == "name") value else project.name,
-                customer = if (field == "customer") value else project.customer,
-                pic = if (field == "pic") value else project.pic,
-                hargaKontrak = if (field == "kontrak") value else project.hargaKontrak
-            )
-        }
-        saveToDisk()
-    }
-
-    fun addJasa() {
-        updateActive { it.copy(listJasa = it.listJasa + Jasa()) }
-        saveToDisk()
-    }
-
-    fun removeJasa(id: Long) {
-        updateActive { it.copy(listJasa = it.listJasa.filterNot { j -> j.id == id }) }
-        saveToDisk()
-    }
-
-    fun updateJasa(id: Long, field: String, value: String) {
-        updateActive { p ->
-            p.copy(listJasa = p.listJasa.map { item ->
-                if (item.id == id) {
-                    when (field) {
-                        "scope" -> item.copy(scope = value)
-                        "engineer" -> item.copy(engineer = value)
-                        else -> item.copy(harga = value)
-                    }
-                } else item
-            })
-        }
-        saveToDisk()
-    }
-
-    fun addBarang() {
-        updateActive { it.copy(listBarang = it.listBarang + Barang()) }
-        saveToDisk()
-    }
-
-    fun removeBarang(id: Long) {
-        updateActive { it.copy(listBarang = it.listBarang.filterNot { b -> b.id == id }) }
-        saveToDisk()
-    }
-
-    fun updateBarang(id: Long, field: String, value: String) {
-        updateActive { p ->
-            p.copy(listBarang = p.listBarang.map { item ->
-                if (item.id == id) {
-                    when (field) {
-                        "nama" -> item.copy(nama = value)
-                        "quantity" -> item.copy(quantity = value)
-                        else -> item.copy(hargaSatuan = value)
-                    }
-                } else item
-            })
-        }
-        saveToDisk()
-    }
-
-    fun addTransportasi() {
-        updateActive { p ->
-            if (p.listTransportasi.size < MAX_TRANSPORTASI) {
-                p.copy(listTransportasi = p.listTransportasi + Transportasi())
-            } else p
-        }
-        saveToDisk()
-    }
-
-    fun removeTransportasi(id: Long) {
-        updateActive { it.copy(listTransportasi = it.listTransportasi.filterNot { t -> t.id == id }) }
-        saveToDisk()
-    }
-
-    fun updateTransportasi(id: Long, field: String, value: String) {
-        updateActive { p ->
-            p.copy(listTransportasi = p.listTransportasi.map { item ->
-                if (item.id == id) {
-                    when (field) {
-                        "keterangan" -> item.copy(keterangan = value)
-                        else -> item.copy(biaya = value)
-                    }
-                } else item
-            })
-        }
-        saveToDisk()
-    }
-
-    fun addLainLain() {
-        updateActive { it.copy(listLainLain = it.listLainLain + LainLain()) }
-        saveToDisk()
-    }
-
-    fun removeLainLain(id: Long) {
-        updateActive { it.copy(listLainLain = it.listLainLain.filterNot { l -> l.id == id }) }
-        saveToDisk()
-    }
-
-    fun updateLainLain(id: Long, field: String, value: String) {
-        updateActive { p ->
-            p.copy(listLainLain = p.listLainLain.map { item ->
-                if (item.id == id) {
-                    when (field) {
-                        "keterangan" -> item.copy(keterangan = value)
-                        else -> item.copy(biaya = value)
-                    }
-                } else item
-            })
-        }
-        saveToDisk()
-    }
-
-    fun resetCurrent() {
+    /**
+     * Updates all four header fields in one pass. Previously the edit dialog called a
+     * stringly-typed setter four times, producing four state updates and four full
+     * disk writes for a single save.
+     */
+    fun updateProjectInfo(name: String, customer: String, pic: String, hargaKontrak: String) {
         updateActive {
-            it.copy(
-                listJasa = listOf(Jasa()),
-                listBarang = listOf(Barang()),
-                listTransportasi = listOf(),
-                listLainLain = listOf()
-            )
+            it.copy(name = name, customer = customer, pic = pic, hargaKontrak = hargaKontrak)
         }
+        saveToDisk()
+    }
+
+    // --- Cost items --------------------------------------------------------
+    //
+    // Updates take a copy-transform rather than a field-name String. The previous
+    // `when (field) { ... else -> item.copy(harga = value) }` shape meant any
+    // mistyped field name silently wrote to the wrong column; this cannot compile
+    // if the field is wrong.
+
+    fun addJasa() = mutateAndSave { it.copy(listJasa = it.listJasa + Jasa()) }
+
+    fun removeJasa(id: String) = mutateAndSave { p ->
+        p.copy(listJasa = p.listJasa.filterNot { it.id == id })
+    }
+
+    fun updateJasa(id: String, transform: (Jasa) -> Jasa) = mutateAndSave { p ->
+        p.copy(listJasa = p.listJasa.map { if (it.id == id) transform(it) else it })
+    }
+
+    fun addBarang() = mutateAndSave { it.copy(listBarang = it.listBarang + Barang()) }
+
+    fun removeBarang(id: String) = mutateAndSave { p ->
+        p.copy(listBarang = p.listBarang.filterNot { it.id == id })
+    }
+
+    fun updateBarang(id: String, transform: (Barang) -> Barang) = mutateAndSave { p ->
+        p.copy(listBarang = p.listBarang.map { if (it.id == id) transform(it) else it })
+    }
+
+    fun addTransportasi() = mutateAndSave { p ->
+        if (p.listTransportasi.size < MAX_TRANSPORTASI) {
+            p.copy(listTransportasi = p.listTransportasi + Transportasi())
+        } else {
+            p
+        }
+    }
+
+    fun removeTransportasi(id: String) = mutateAndSave { p ->
+        p.copy(listTransportasi = p.listTransportasi.filterNot { it.id == id })
+    }
+
+    fun updateTransportasi(id: String, transform: (Transportasi) -> Transportasi) = mutateAndSave { p ->
+        p.copy(listTransportasi = p.listTransportasi.map { if (it.id == id) transform(it) else it })
+    }
+
+    fun addLainLain() = mutateAndSave { it.copy(listLainLain = it.listLainLain + LainLain()) }
+
+    fun removeLainLain(id: String) = mutateAndSave { p ->
+        p.copy(listLainLain = p.listLainLain.filterNot { it.id == id })
+    }
+
+    fun updateLainLain(id: String, transform: (LainLain) -> LainLain) = mutateAndSave { p ->
+        p.copy(listLainLain = p.listLainLain.map { if (it.id == id) transform(it) else it })
+    }
+
+    fun resetCurrent() = mutateAndSave {
+        it.copy(
+            listJasa = listOf(Jasa()),
+            listBarang = listOf(Barang()),
+            listTransportasi = emptyList(),
+            listLainLain = emptyList()
+        )
+    }
+
+    // --- Internals ---------------------------------------------------------
+
+    private fun mutateAndSave(transform: (Project) -> Project) {
+        updateActive(transform)
         saveToDisk()
     }
 
@@ -194,7 +153,9 @@ class ProjectViewModel : ViewModel() {
         try {
             projects = json.decodeFromString<List<Project>>(raw)
         } catch (_: Exception) {
-            // Data korup/versi lama: abaikan dan mulai dari awal
+            // Data korup atau versi lama: mulai dari awal.
+            // Phase 6 replaces this store, and the repository will surface load
+            // failures instead of discarding them silently.
         }
     }
 
@@ -202,7 +163,7 @@ class ProjectViewModel : ViewModel() {
         try {
             settings.putString(KEY_PROJECTS, json.encodeToString(projects))
         } catch (_: Exception) {
-            // Abaikan jika gagal menyimpan untuk sementara
+            // Abaikan jika gagal menyimpan untuk sementara.
         }
     }
 
@@ -211,11 +172,5 @@ class ProjectViewModel : ViewModel() {
 
         /** Maximum transportasi rows allowed on a project. */
         const val MAX_TRANSPORTASI = 20
-
-        /**
-         * Kept as a companion function so existing call sites keep working.
-         * The implementation now lives in [com.costproject.app.ui.util.formatRupiah].
-         */
-        fun formatRupiah(value: Double): String = value.formatRupiah()
     }
 }

@@ -147,10 +147,7 @@ fun ProjectView(project: Project, viewModel: ProjectViewModel) {
             confirmLabel = "Simpan",
             onDismiss = { showEditInfo = false },
             onConfirm = { name, customer, pic, contract ->
-                viewModel.updateProjectInfo("name", name)
-                viewModel.updateProjectInfo("customer", customer)
-                viewModel.updateProjectInfo("pic", pic)
-                viewModel.updateProjectInfo("kontrak", contract)
+                viewModel.updateProjectInfo(name, customer, pic, contract)
                 showEditInfo = false
             }
         )
@@ -179,7 +176,7 @@ fun ProjectView(project: Project, viewModel: ProjectViewModel) {
 }
 
 @Composable
-fun BottomSummary(total: Double, onTapTotal: () -> Unit) {
+fun BottomSummary(total: Long, onTapTotal: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
