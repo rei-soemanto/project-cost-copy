@@ -1,4 +1,4 @@
-package com.costproject.app
+package com.costproject.app.util
 
 import platform.Foundation.NSDate
 import platform.Foundation.NSDateFormatter

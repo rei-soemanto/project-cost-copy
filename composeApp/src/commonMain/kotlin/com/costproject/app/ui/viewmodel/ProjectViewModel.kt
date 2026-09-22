@@ -1,11 +1,16 @@
-package com.costproject.app
+package com.costproject.app.ui.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.costproject.app.domain.model.Barang
+import com.costproject.app.domain.model.Jasa
+import com.costproject.app.domain.model.LainLain
+import com.costproject.app.domain.model.Project
+import com.costproject.app.domain.model.Transportasi
+import com.costproject.app.ui.util.formatRupiah
 import com.russhwolf.settings.Settings
-import kotlin.math.roundToLong
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -117,7 +122,7 @@ class ProjectViewModel : ViewModel() {
 
     fun addTransportasi() {
         updateActive { p ->
-            if (p.listTransportasi.size < 20) {
+            if (p.listTransportasi.size < MAX_TRANSPORTASI) {
                 p.copy(listTransportasi = p.listTransportasi + Transportasi())
             } else p
         }
@@ -204,12 +209,13 @@ class ProjectViewModel : ViewModel() {
     companion object {
         private const val KEY_PROJECTS = "projects"
 
-        fun formatRupiah(value: Double): String {
-            val rounded = value.roundToLong()
-            val negative = rounded < 0
-            val abs = kotlin.math.abs(rounded).toString()
-            val grouped = abs.reversed().chunked(3).joinToString(".").reversed()
-            return (if (negative) "-Rp" else "Rp") + grouped
-        }
+        /** Maximum transportasi rows allowed on a project. */
+        const val MAX_TRANSPORTASI = 20
+
+        /**
+         * Kept as a companion function so existing call sites keep working.
+         * The implementation now lives in [com.costproject.app.ui.util.formatRupiah].
+         */
+        fun formatRupiah(value: Double): String = value.formatRupiah()
     }
 }

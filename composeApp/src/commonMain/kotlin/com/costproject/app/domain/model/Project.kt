@@ -1,5 +1,6 @@
-package com.costproject.app
+package com.costproject.app.domain.model
 
+import com.costproject.app.util.todayLabel
 import kotlin.random.Random
 import kotlinx.serialization.Serializable
 
