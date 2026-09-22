@@ -20,3 +20,6 @@ npm-debug.log*
 
 # Agent tooling (.agents/ is committed so the skill set is shared)
 .claude/
+
+# Server build output
+server/dist/
