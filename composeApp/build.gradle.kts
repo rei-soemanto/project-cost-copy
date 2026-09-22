@@ -1,6 +1,13 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+/**
+ * API base URL baked into the Android build. Defaults to 10.0.2.2, the emulator's
+ * alias for the host machine. For a physical device on the same network:
+ *   ./gradlew installDebug -PapiBaseUrl=http://192.168.1.10:3000/api/v1/
+ */
+val apiBaseUrl: String = providers.gradleProperty("apiBaseUrl").getOrElse("http://10.0.2.2:3000/api/v1/")
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.multiplatform)
@@ -42,6 +49,7 @@ kotlin {
 
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
 
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.auth)
@@ -56,6 +64,7 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+            implementation(libs.multiplatform.settings.test)
         }
 
         androidMain.dependencies {
@@ -80,10 +89,18 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
+        debug {
+            // Plain http:// to a local dev server. Any host, so a LAN IP works too.
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+        }
         release {
+            // Release builds must talk HTTPS.
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -97,6 +114,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

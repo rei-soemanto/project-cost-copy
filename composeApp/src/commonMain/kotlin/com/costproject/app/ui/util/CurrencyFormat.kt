@@ -16,11 +16,24 @@ import kotlin.math.abs
  * ```
  */
 fun Long.formatRupiah(): String {
-    val negative = this < 0
-    val digits = abs(this).toString()
-    val grouped = digits.reversed().chunked(3).joinToString(".").reversed()
-    return (if (negative) "-Rp" else "Rp") + grouped
+    val sign = if (this < 0) "-" else ""
+    return sign + "Rp" + abs(this).formatThousands()
 }
+
+/** Groups digits with Indonesian dot separators: 5000000 -> "5.000.000". Sign is dropped. */
+fun Long.formatThousands(): String =
+    abs(this).toString().reversed().chunked(3).joinToString(".").reversed()
+
+/**
+ * Converts a stored amount back into text for an editable field.
+ *
+ * Zero becomes an empty field rather than "0", so a row the user never filled in
+ * looks the same after a round trip through the server as it did before.
+ */
+fun Long.toAmountInput(): String = if (this == 0L) "" else formatThousands()
+
+/** Quantity counterpart of [toAmountInput]: plain digits, empty for zero or absent. */
+fun Long?.toQuantityInput(): String = if (this == null || this == 0L) "" else toString()
 
 /**
  * Parses user-entered money into whole rupiah, tolerating the separators the app

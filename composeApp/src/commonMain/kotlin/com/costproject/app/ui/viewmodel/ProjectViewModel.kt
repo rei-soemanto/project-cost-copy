@@ -9,17 +9,16 @@ import com.costproject.app.domain.model.Jasa
 import com.costproject.app.domain.model.LainLain
 import com.costproject.app.domain.model.Project
 import com.costproject.app.domain.model.Transportasi
+import com.costproject.app.data.local.decodeLegacyProjects
+import com.costproject.app.data.local.encodeLegacyProjects
 import com.russhwolf.settings.Settings
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 class ProjectViewModel : ViewModel() {
 
     private val settings: Settings by lazy { Settings() }
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
+
+    /** Set when saved data exists but could not be read; blocks every save so it is never overwritten. */
+    private var loadFailed = false
 
     var projects by mutableStateOf(listOf<Project>())
         private set
@@ -150,23 +149,25 @@ class ProjectViewModel : ViewModel() {
         projects = projects.map { if (it.id == id) transform(it) else it }
     }
 
+    /**
+     * Reads with the same tolerant decoder the server import uses, which accepts
+     * the numeric ids the original app wrote. The strict decoder used before
+     * rejected them, the failure was swallowed, and the next save overwrote every
+     * existing project with an empty list.
+     */
     private fun loadFromDisk() {
         val raw = settings.getStringOrNull(KEY_PROJECTS) ?: return
-        try {
-            projects = json.decodeFromString<List<Project>>(raw)
-        } catch (_: Exception) {
-            // Data korup atau versi lama: mulai dari awal.
-            // Phase 6 replaces this store, and the repository will surface load
-            // failures instead of discarding them silently.
+        val decoded = decodeLegacyProjects(raw)
+        if (decoded == null) {
+            loadFailed = true
+        } else {
+            projects = decoded
         }
     }
 
     private fun saveToDisk() {
-        try {
-            settings.putString(KEY_PROJECTS, json.encodeToString(projects))
-        } catch (_: Exception) {
-            // Abaikan jika gagal menyimpan untuk sementara.
-        }
+        if (loadFailed) return
+        settings.putString(KEY_PROJECTS, encodeLegacyProjects(projects))
     }
 
     companion object {
