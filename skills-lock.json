@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "skills": {
+    "android-data-layer": {
+      "source": "rcosteira79/android-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/android-skills/skills/android-data-layer/SKILL.md",
+      "computedHash": "e2aa9a771ce4d04fbe49f2db3ce15bf75844b002e86e01808afe4ff0494a9cd2"
+    },
+    "api-design": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/api-design/SKILL.md",
+      "computedHash": "f3c716e9ee0a1076496629807ee311c1b81b358e84d86956abcbc91e6b995e8f"
+    },
+    "backend-patterns": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/backend-patterns/SKILL.md",
+      "computedHash": "45bf0c6abd0549b56142690f49437bc59c7b4f55b62dc7717ef295ec6ed6617f"
+    },
+    "compose-multiplatform-patterns": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/compose-multiplatform-patterns/SKILL.md",
+      "computedHash": "d42483b2fcf3d9aec758a9605aab0041d1cdd1fe2813fe23b13c95c4dbe36fed"
+    },
+    "edge-to-edge": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "system/edge-to-edge/SKILL.md",
+      "computedHash": "7ccf71d4ff4d16509ee07df3312d6475741cd68006156c1a90e0638aa67b5fa0"
+    },
+    "kmp-boundaries": {
+      "source": "rcosteira79/android-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/android-skills/skills/kmp-boundaries/SKILL.md",
+      "computedHash": "d9ace7f424f07279a407a0fc4abcab58eaa5506b7a61afcdd33afd69ced8ae23"
+    },
+    "kmp-ktor": {
+      "source": "rcosteira79/android-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/android-skills/skills/kmp-ktor/SKILL.md",
+      "computedHash": "220ff7ef1cab54042a5f50a3d36d7d2c1f1f6a62921539783657f61ec0a2ab53"
+    },
+    "kotlin-coroutines": {
+      "source": "rcosteira79/android-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/android-skills/skills/kotlin-coroutines/SKILL.md",
+      "computedHash": "528de4c860cdbc67dda89786fe7efd9b4e136352039d297ccfbc5f0e012e2158"
+    },
+    "kotlin-flows": {
+      "source": "rcosteira79/android-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/android-skills/skills/kotlin-flows/SKILL.md",
+      "computedHash": "f831c27b41584fccbd6498786b1d7de1034151b3e774b97d0757633f0b1b5f2d"
+    },
+    "kotlin-patterns": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-patterns/SKILL.md",
+      "computedHash": "13278a2dcaa94b4173e9dcb7de73e4272e2ed8422580735b3c01a67a0a9b2ef6"
+    },
+    "kotlin-tooling-agp9-migration": {
+      "source": "kotlin/kotlin-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-tooling-agp9-migration/SKILL.md",
+      "computedHash": "83e8850784e288d7179fb5b7b0c7800fd1e428c7ed35f09cbb5a9bdcf4de0bea"
+    },
+    "testing-setup": {
+      "source": "android/skills",
+      "sourceType": "github",
+      "skillPath": "testing/testing-setup/SKILL.md",
+      "computedHash": "de0015c403fb84dee6a9995d4c2e9b9005597750f859725c2b46768fe2c1adfe"
+    }
+  }
+}

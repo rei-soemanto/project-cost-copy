@@ -1,0 +1,22 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Kotlin
+.kotlin/
+
+# Node / Express backend
+node_modules/
+server/.env
+npm-debug.log*
+
+# Agent tooling (.agents/ is committed so the skill set is shared)
+.claude/
