@@ -36,7 +36,8 @@ class ProjectViewModel : ViewModel() {
 
     // --- Project lifecycle -------------------------------------------------
 
-    fun createProject(name: String, customer: String, pic: String, hargaKontrak: String) {
+    /** Creates a project and returns its id so the caller can navigate to it. */
+    fun createProject(name: String, customer: String, pic: String, hargaKontrak: String): String {
         val project = Project(
             name = name,
             customer = customer,
@@ -46,6 +47,7 @@ class ProjectViewModel : ViewModel() {
         projects = projects + project
         activeProjectId = project.id
         saveToDisk()
+        return project.id
     }
 
     fun openProject(id: String) {

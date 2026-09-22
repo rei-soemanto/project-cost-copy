@@ -88,7 +88,11 @@ fun ProjectTopBar(
 }
 
 @Composable
-fun ProjectView(project: Project, viewModel: ProjectViewModel) {
+fun ProjectView(
+    project: Project,
+    viewModel: ProjectViewModel,
+    onBack: () -> Unit
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showEditInfo by remember { mutableStateOf(false) }
@@ -100,7 +104,7 @@ fun ProjectView(project: Project, viewModel: ProjectViewModel) {
         topBar = {
             ProjectTopBar(
                 project = project,
-                onBack = viewModel::closeProject,
+                onBack = onBack,
                 onEditInfo = { showEditInfo = true }
             )
         },
