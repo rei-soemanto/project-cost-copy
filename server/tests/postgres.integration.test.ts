@@ -38,6 +38,7 @@ describe.skipIf(!databaseUrl)("Postgres repositories (integration)", () => {
         refreshTokenTtlSeconds: 3600,
         passwordHashRounds: 4,
         corsOrigins: [],
+        adminEmails: ["pg-admin@example.com"],
       },
       users: new PgUserRepository(pool),
       refreshTokens: new PgRefreshTokenRepository(pool),
@@ -149,6 +150,41 @@ describe.skipIf(!databaseUrl)("Postgres repositories (integration)", () => {
       http.post("/api/v1/auth/refresh").send({ refreshToken }),
     ]);
     expect([a.status, b.status].sort()).toEqual([200, 401]);
+  });
+
+  it("admin export reads every user's projects and owners from Postgres", async () => {
+    const adminRes = await http
+      .post("/api/v1/auth/register")
+      .send({ fullName: "PG Admin", email: "pg-admin@example.com", password: "password123" })
+      .expect(201);
+    const adminAuth = { Authorization: `Bearer ${adminRes.body.data.accessToken}` };
+    const other = await register();
+    await http.post("/api/v1/projects").set(other.auth).send({ ...sampleProject("pg-export"), name: "PG Export" }).expect(201);
+
+    const res = await http
+      .get("/api/v1/export/all.xlsx")
+      .set(adminAuth)
+      .buffer(true)
+      .parse((r, done) => {
+        const chunks: Buffer[] = [];
+        r.on("data", (c: Buffer) => chunks.push(c));
+        r.on("end", () => done(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(res.body as unknown as ArrayBuffer);
+    const names: unknown[] = [];
+    wb.getWorksheet("Ringkasan Project")!.eachRow((row, n) => n > 1 && names.push(row.getCell(3).value));
+    expect(names).toContain("PG Export");
+  });
+
+  it("findManyByIds returns known users and skips unknown ids", async () => {
+    const { user } = await register();
+    const users = new PgUserRepository(pool);
+    const found = await users.findManyByIds([user.id, "00000000-0000-0000-0000-000000000000"]);
+    expect(found.map((u) => u.id)).toEqual([user.id]);
+    expect(await users.findManyByIds([])).toEqual([]);
   });
 
   it("stores refresh tokens only as hashes", async () => {

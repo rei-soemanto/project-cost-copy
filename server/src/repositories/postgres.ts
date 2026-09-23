@@ -48,6 +48,12 @@ export class PgUserRepository implements UserRepository {
     return rows[0] ? toUser(rows[0]) : null;
   }
 
+  async findManyByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const { rows } = await this.pool.query<UserRow>("SELECT * FROM users WHERE id = ANY($1::uuid[])", [ids]);
+    return rows.map(toUser);
+  }
+
   async create(input: NewUser) {
     try {
       const { rows } = await this.pool.query<UserRow>(
@@ -197,6 +203,12 @@ export class PgProjectRepository implements ProjectRepository {
       "SELECT * FROM projects WHERE owner_id = $1 ORDER BY created_at DESC",
       [ownerId],
     );
+    const items = await loadItems(this.pool, rows.map((r) => r.id));
+    return rows.map((r) => toProject(r, items.get(r.id) ?? []));
+  }
+
+  async listAll() {
+    const { rows } = await this.pool.query<ProjectRow>("SELECT * FROM projects ORDER BY created_at DESC");
     const items = await loadItems(this.pool, rows.map((r) => r.id));
     return rows.map((r) => toProject(r, items.get(r.id) ?? []));
   }

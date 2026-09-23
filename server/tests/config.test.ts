@@ -28,6 +28,12 @@ describe("loadConfig", () => {
     expect(config.corsOrigins).toEqual(["http://a.com", "http://b.com"]);
   });
 
+  it("parses ADMIN_EMAILS into a lower-cased list, and defaults to no admins", () => {
+    expect(loadConfig(valid).adminEmails).toEqual([]);
+    const config = loadConfig({ ...valid, ADMIN_EMAILS: " Rei@Example.com, boss@X.co.id ,, " });
+    expect(config.adminEmails).toEqual(["rei@example.com", "boss@x.co.id"]);
+  });
+
   it("refuses a short JWT secret", () => {
     expect(() => loadConfig({ ...valid, JWT_ACCESS_SECRET: "too-short" })).toThrow(/JWT_ACCESS_SECRET/);
   });

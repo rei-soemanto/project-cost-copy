@@ -18,6 +18,40 @@ export interface CostItem {
   amount: number;
 }
 
+/**
+ * An item's contribution to the project total, in rupiah. BARANG is quantity x
+ * unit price; every other kind is its amount.
+ *
+ * Must match the app exactly (composeApp domain/model/Project.kt): Barang.total
+ * = quantity * hargaSatuan, the others use their amount. The export is the only
+ * place the server computes totals, and a mismatch would make the backup
+ * disagree with what users saw on screen.
+ */
+export function itemSubtotal(item: CostItem): number {
+  return item.kind === "BARANG" ? (item.quantity ?? 0) * item.amount : item.amount;
+}
+
+export interface ProjectTotals {
+  jasa: number;
+  barang: number;
+  transportasi: number;
+  lainLain: number;
+  total: number;
+  /** Contract minus total cost. Negative means the costs exceed the contract. */
+  sisaKontrak: number;
+}
+
+export function projectTotals(project: Pick<Project, "items" | "hargaKontrak">): ProjectTotals {
+  const sumOf = (kind: CostItemKind) =>
+    project.items.filter((i) => i.kind === kind).reduce((sum, i) => sum + itemSubtotal(i), 0);
+  const jasa = sumOf("JASA");
+  const barang = sumOf("BARANG");
+  const transportasi = sumOf("TRANSPORTASI");
+  const lainLain = sumOf("LAIN_LAIN");
+  const total = jasa + barang + transportasi + lainLain;
+  return { jasa, barang, transportasi, lainLain, total, sisaKontrak: project.hargaKontrak - total };
+}
+
 export interface Project {
   id: string;
   ownerId: string;

@@ -20,6 +20,8 @@ export interface UserRepository {
   /** Case-insensitive. */
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
+  /** Users with these ids; unknown ids are skipped. */
+  findManyByIds(ids: string[]): Promise<User[]>;
   /** Throws EmailTakenError if the email is already registered. */
   create(input: NewUser): Promise<User>;
 }
@@ -60,6 +62,11 @@ export interface ProjectHeaderPatch {
 export interface ProjectRepository {
   /** Newest first, items included. */
   listByOwner(ownerId: string): Promise<Project[]>;
+  /**
+   * Every user's projects, newest first, items included. The one method not
+   * scoped to an owner: only the admin export may call it.
+   */
+  listAll(): Promise<Project[]>;
   findById(ownerId: string, id: string): Promise<Project | null>;
   /** Throws ProjectExistsError if the id is already used by anyone. */
   create(input: NewProject): Promise<Project>;

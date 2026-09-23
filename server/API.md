@@ -157,6 +157,54 @@ most 500 items in total.
 
 `204`, no body. Errors: `404`.
 
+## Account
+
+### `GET /me`
+
+The signed-in user. `isAdmin` comes from the server's `ADMIN_EMAILS` setting and
+decides whether the app offers the all-users export.
+
+`200` →
+```json
+{ "data": { "id": "uuid", "email": "rei@example.com", "fullName": "Rei Soemanto", "isAdmin": false } }
+```
+
+## Export (Excel backup)
+
+Both endpoints answer with the `.xlsx` file itself, not the JSON envelope:
+
+- `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- `Content-Disposition: attachment; filename="CostProject-Backup-2026-09-23.xlsx"`
+  (the date is the Asia/Jakarta date)
+- `Cache-Control: no-store`
+
+Errors still use the JSON error envelope.
+
+### `GET /export/projects.xlsx`
+
+The caller's own projects.
+
+### `GET /export/all.xlsx`
+
+Every user's projects, with owner columns. Admins only: anyone else gets
+`403 FORBIDDEN`. The file is named `CostProject-Backup-SemuaData-<date>.xlsx`.
+
+### Workbook contents
+
+| Sheet | One row per | Columns |
+|---|---|---|
+| `Ringkasan Project` | project | *(all.xlsx: Pemilik, Email Pemilik)*, Project, Customer, PIC, Harga Kontrak, Total Jasa, Total Barang, Total Transportasi, Total Lain-lain, Total Biaya, Sisa Kontrak, Dibuat, Diperbarui |
+| `Rincian Biaya` | line item | *(all.xlsx: Pemilik)*, Project, Kategori, No, Keterangan, Engineer, Qty, Harga, Subtotal |
+| `Info` | — | export time, exported by, scope, counts |
+
+- Money cells are numbers formatted `"Rp"#,##0`, not text.
+- Totals use the app's formula: a `BARANG` item contributes quantity × amount;
+  every other kind contributes its amount.
+- A contract of 0 means "no contract": Harga Kontrak and Sisa Kontrak are left empty.
+- Dates are Asia/Jakarta wall-clock time.
+- Values are static, with no formulas. Text is always stored as text, so a name
+  like `=SUM(1)` is never evaluated.
+
 ## Error codes
 
 | HTTP | code | when |
@@ -166,6 +214,7 @@ most 500 items in total.
 | 401 | `TOKEN_EXPIRED` | access token expired — refresh and retry |
 | 401 | `INVALID_CREDENTIALS` | wrong email or password |
 | 401 | `INVALID_REFRESH_TOKEN` | refresh token unknown, expired, or reused |
+| 403 | `FORBIDDEN` | signed in, but not allowed (e.g. a non-admin requesting `export/all.xlsx`) |
 | 404 | `NOT_FOUND` | resource missing or not owned by caller |
 | 409 | `EMAIL_TAKEN` | register with an existing email |
 | 409 | `PROJECT_EXISTS` | create with an id already in use |

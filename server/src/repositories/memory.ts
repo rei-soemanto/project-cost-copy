@@ -39,6 +39,13 @@ export class InMemoryUserRepository implements UserRepository {
     return user ? clone(user) : null;
   }
 
+  async findManyByIds(ids: string[]) {
+    return ids.flatMap((id) => {
+      const user = this.users.get(id);
+      return user ? [clone(user)] : [];
+    });
+  }
+
   async create(input: NewUser) {
     if (await this.findByEmail(input.email)) throw new EmailTakenError();
     const user: User = { id: randomUUID(), createdAt: new Date(), ...input };
@@ -84,6 +91,10 @@ export class InMemoryProjectRepository implements ProjectRepository {
       .filter((p) => p.ownerId === ownerId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .map(clone);
+  }
+
+  async listAll() {
+    return [...this.projects.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(clone);
   }
 
   async findById(ownerId: string, id: string) {

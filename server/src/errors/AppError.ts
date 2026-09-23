@@ -5,6 +5,7 @@ export type ErrorCode =
   | "TOKEN_EXPIRED"
   | "INVALID_CREDENTIALS"
   | "INVALID_REFRESH_TOKEN"
+  | "FORBIDDEN"
   | "NOT_FOUND"
   | "EMAIL_TAKEN"
   | "PROJECT_EXISTS"
@@ -36,6 +37,10 @@ export class AppError extends Error {
 
   static tokenExpired() {
     return new AppError(401, "TOKEN_EXPIRED", "Access token expired");
+  }
+
+  static forbidden(message = "You do not have permission to do this") {
+    return new AppError(403, "FORBIDDEN", message);
   }
 
   static notFound(what = "Resource") {

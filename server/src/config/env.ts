@@ -18,6 +18,8 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
   CORS_ORIGINS: z.string().default(""),
+  // Comma-separated emails allowed to export every user's data.
+  ADMIN_EMAILS: z.string().default(""),
 });
 
 export interface AppConfig {
@@ -28,6 +30,8 @@ export interface AppConfig {
   databaseUrl: string;
   jwtAccessSecret: string;
   corsOrigins: string[];
+  /** Lower-cased. Only the server decides who is an admin; clients cannot claim it. */
+  adminEmails: string[];
   accessTokenTtlSeconds: number;
   refreshTokenTtlSeconds: number;
   /** bcrypt cost factor. 12 in production; tests lower it to stay fast. */
@@ -53,6 +57,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     databaseUrl: e.DATABASE_URL,
     jwtAccessSecret: e.JWT_ACCESS_SECRET,
     corsOrigins: e.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean),
+    adminEmails: e.ADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
     accessTokenTtlSeconds: ACCESS_TOKEN_TTL_SECONDS,
     refreshTokenTtlSeconds: REFRESH_TOKEN_TTL_SECONDS,
     passwordHashRounds: 12,

@@ -15,6 +15,7 @@ export interface TestAppOptions {
   now?: () => Date;
   accessTokenTtlSeconds?: number;
   credentialLimiter?: RequestHandler;
+  adminEmails?: string[];
 }
 
 /**
@@ -35,6 +36,8 @@ export function buildTestApp(options: TestAppOptions = {}) {
       // Minimum bcrypt cost keeps the suite fast; production uses 12.
       passwordHashRounds: 4,
       corsOrigins: [],
+      adminEmails: options.adminEmails ?? [],
+      exportTimeZone: "Asia/Jakarta",
     },
     ...repos,
     logger: { error: () => {} },
