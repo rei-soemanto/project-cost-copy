@@ -44,6 +44,7 @@ private suspend fun ResponseException.toDataError(): DataError {
             fieldErrors = body?.details?.associate { it.path to it.message } ?: emptyMap()
         )
         401 -> if (body?.code == "INVALID_CREDENTIALS") DataError.InvalidCredentials() else DataError.Unauthorized()
+        403 -> DataError.Forbidden()
         404 -> DataError.NotFound()
         409 -> DataError.Conflict(
             when (body?.code) {

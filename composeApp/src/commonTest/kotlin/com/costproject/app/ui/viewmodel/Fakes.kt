@@ -2,7 +2,9 @@ package com.costproject.app.ui.viewmodel
 
 import com.costproject.app.data.DataError
 import com.costproject.app.data.repository.AuthRepository
+import com.costproject.app.data.repository.ExportRepository
 import com.costproject.app.data.repository.ProjectRepository
+import com.costproject.app.domain.model.ExportFile
 import com.costproject.app.domain.model.Project
 import com.costproject.app.domain.model.User
 import kotlinx.coroutines.delay
@@ -128,5 +130,29 @@ class FakeProjectRepository(initial: List<Project> = emptyList()) : ProjectRepos
         } finally {
             writesInFlight--
         }
+    }
+}
+
+class FakeExportRepository(
+    var admin: Result<Boolean> = Result.success(false),
+    var file: Result<ExportFile> = Result.success(ExportFile("CostProject-Backup-2026-09-23.xlsx", byteArrayOf(0x50, 0x4B)))
+) : ExportRepository {
+    var mineCalls = 0
+    var allCalls = 0
+    /** Simulated download time, so tests can tap twice while one is running. */
+    var delayMillis = 0L
+
+    override suspend fun isAdmin(): Result<Boolean> = admin
+
+    override suspend fun exportMine(): Result<ExportFile> {
+        mineCalls++
+        if (delayMillis > 0) delay(delayMillis)
+        return file
+    }
+
+    override suspend fun exportAll(): Result<ExportFile> {
+        allCalls++
+        if (delayMillis > 0) delay(delayMillis)
+        return file
     }
 }

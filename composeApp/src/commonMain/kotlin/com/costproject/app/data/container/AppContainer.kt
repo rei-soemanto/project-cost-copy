@@ -5,6 +5,7 @@ import com.costproject.app.data.local.SettingsTokenStorage
 import com.costproject.app.data.local.TokenStorage
 import com.costproject.app.data.local.createSecureSettings
 import com.costproject.app.data.remote.AuthApiService
+import com.costproject.app.data.remote.ExportApiService
 import com.costproject.app.data.remote.ProjectApiService
 import com.costproject.app.data.remote.clearCachedBearerTokens
 import com.costproject.app.data.remote.createAuthenticatedHttpClient
@@ -13,7 +14,9 @@ import com.costproject.app.data.remote.createPublicHttpClient
 import com.costproject.app.data.remote.defaultApiBaseUrl
 import com.costproject.app.data.repository.AuthRepository
 import com.costproject.app.data.repository.DefaultAuthRepository
+import com.costproject.app.data.repository.DefaultExportRepository
 import com.costproject.app.data.repository.DefaultProjectRepository
+import com.costproject.app.data.repository.ExportRepository
 import com.costproject.app.data.repository.ProjectRepository
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
@@ -71,5 +74,9 @@ class AppContainer(
 
     val projectRepository: ProjectRepository by lazy {
         DefaultProjectRepository(ProjectApiService(authenticatedClient), LegacyProjectStore(legacySettings))
+    }
+
+    val exportRepository: ExportRepository by lazy {
+        DefaultExportRepository(ExportApiService(authenticatedClient))
     }
 }

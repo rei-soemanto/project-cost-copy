@@ -3,9 +3,12 @@ package com.costproject.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.costproject.app.data.repository.AuthRepository
+import com.costproject.app.data.repository.ExportRepository
 import com.costproject.app.data.repository.ProjectRepository
+import com.costproject.app.domain.model.ExportFile
 import com.costproject.app.domain.model.Project
 import com.costproject.app.domain.model.User
+import com.costproject.app.ui.util.SaveResult
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,15 +24,18 @@ sealed interface ProjectListUiState {
     data class Error(val message: String) : ProjectListUiState
 }
 
-/** Things that happen once, which state cannot express: navigate, show a message. */
+/** Things that happen once, which state cannot express: navigate, show a message, save a file. */
 sealed interface ProjectListEvent {
     data class OpenProject(val id: String) : ProjectListEvent
     data class ShowMessage(val message: String) : ProjectListEvent
+    /** A backup is downloaded; open the save picker suggesting [fileName]. The bytes stay here. */
+    data class SaveFile(val fileName: String) : ProjectListEvent
 }
 
 class ProjectListViewModel(
     private val projectRepository: ProjectRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val exportRepository: ExportRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectListUiState>(ProjectListUiState.Loading)
@@ -46,6 +52,22 @@ class ProjectListViewModel(
 
     private var isCreating = false
 
+    /** Whether to offer "Ekspor semua data". Defaults to false, so a failed check just hides it. */
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
+
+    private val _isExporting = MutableStateFlow(false)
+    val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
+
+    /**
+     * A downloaded backup waiting for the user to pick where to save it. Held here
+     * rather than in the screen so a rotation while the picker is open keeps it.
+     */
+    private var pendingExport: ExportFile? = null
+
+    /** The bytes the save picker should write. Read when the user has chosen a destination. */
+    val pendingExportBytes: ByteArray? get() = pendingExport?.bytes
+
     /** Whether the list is on screen. Set by the view as it enters and leaves composition. */
     private var isVisible = false
     /** A project changed while the list was hidden; refresh when it is shown again. */
@@ -53,6 +75,9 @@ class ProjectListViewModel(
 
     init {
         load()
+        viewModelScope.launch {
+            _isAdmin.value = exportRepository.isAdmin().getOrDefault(false)
+        }
         viewModelScope.launch {
             // Refreshing only while visible avoids reloading the whole list on every
             // autosave while the user is editing a project. A save that lands after
@@ -137,6 +162,36 @@ class ProjectListViewModel(
                 _events.send(ProjectListEvent.ShowMessage(error.message ?: "Gagal menghapus project."))
             }
         }
+    }
+
+    /**
+     * Downloads an Excel backup: the user's own projects, or everyone's when
+     * [all] is set (admins only; the server refuses anyone else).
+     */
+    fun export(all: Boolean) {
+        if (_isExporting.value) return
+        _isExporting.value = true
+        viewModelScope.launch {
+            val result = if (all) exportRepository.exportAll() else exportRepository.exportMine()
+            result
+                .onSuccess { file ->
+                    pendingExport = file
+                    _events.send(ProjectListEvent.SaveFile(file.fileName))
+                }
+                .onFailure { _events.send(ProjectListEvent.ShowMessage(it.message ?: "Gagal mengekspor data.")) }
+            _isExporting.value = false
+        }
+    }
+
+    /** Called once the save picker closes. */
+    fun onExportSaved(result: SaveResult) {
+        pendingExport = null
+        val message = when (result) {
+            SaveResult.Saved -> "Backup Excel tersimpan."
+            SaveResult.Failed -> "Gagal menyimpan file."
+            SaveResult.Cancelled -> return
+        }
+        viewModelScope.launch { _events.send(ProjectListEvent.ShowMessage(message)) }
     }
 
     fun logout() = authRepository.logout()

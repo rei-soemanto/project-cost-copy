@@ -20,7 +20,9 @@ object ViewModelFactory {
     }
 
     fun projectList(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
-        initializer { ProjectListViewModel(container.projectRepository, container.authRepository) }
+        initializer {
+            ProjectListViewModel(container.projectRepository, container.authRepository, container.exportRepository)
+        }
     }
 
     fun projectDetail(container: AppContainer, projectId: String): ViewModelProvider.Factory = viewModelFactory {

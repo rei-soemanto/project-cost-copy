@@ -12,16 +12,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +55,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.costproject.app.domain.model.Project
+import com.costproject.app.ui.util.XLSX_MIME_TYPE
+import com.costproject.app.ui.util.rememberFileSaver
 import com.costproject.app.ui.view.common.AddButton
 import com.costproject.app.ui.viewmodel.ProjectListEvent
 import com.costproject.app.ui.viewmodel.ProjectListUiState
@@ -63,7 +69,14 @@ fun ProjectListScreen(
     onOpenProject: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    val isAdmin by viewModel.isAdmin.collectAsState()
+    val isExporting by viewModel.isExporting.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val fileSaver = rememberFileSaver(
+        mimeType = XLSX_MIME_TYPE,
+        content = { viewModel.pendingExportBytes },
+        onResult = viewModel::onExportSaved
+    )
     val scope = rememberCoroutineScope()
 
     var showCreate by remember { mutableStateOf(false) }
@@ -76,6 +89,7 @@ fun ProjectListScreen(
                 // Launched separately: showSnackbar suspends until dismissed, which
                 // would otherwise hold up the next event.
                 is ProjectListEvent.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(event.message) }
+                is ProjectListEvent.SaveFile -> fileSaver.launch(event.fileName)
             }
         }
     }
@@ -92,7 +106,10 @@ fun ProjectListScreen(
         topBar = {
             HomeTopBar(
                 userName = viewModel.currentUser?.fullName,
+                isAdmin = isAdmin,
+                isExporting = isExporting,
                 onRefresh = viewModel::refresh,
+                onExport = viewModel::export,
                 onLogout = viewModel::logout
             )
         },
@@ -156,7 +173,14 @@ fun ProjectListScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeTopBar(userName: String?, onRefresh: () -> Unit, onLogout: () -> Unit) {
+fun HomeTopBar(
+    userName: String?,
+    isAdmin: Boolean,
+    isExporting: Boolean,
+    onRefresh: () -> Unit,
+    onExport: (all: Boolean) -> Unit,
+    onLogout: () -> Unit
+) {
     TopAppBar(
         title = {
             Column {
@@ -171,6 +195,7 @@ fun HomeTopBar(userName: String?, onRefresh: () -> Unit, onLogout: () -> Unit) {
             IconButton(onClick = onRefresh) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Muat ulang", tint = Color.White)
             }
+            ExportButton(isAdmin = isAdmin, isExporting = isExporting, onExport = onExport)
             IconButton(onClick = onLogout) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Keluar", tint = Color.White)
             }
@@ -254,4 +279,41 @@ private fun PaddingValues.plus(extra: androidx.compose.ui.unit.Dp): PaddingValue
         end = calculateEndPadding(direction) + extra,
         bottom = calculateBottomPadding() + extra
     )
+}
+
+/**
+ * Downloads an Excel backup. Everyone exports their own projects in one tap;
+ * admins get a menu with the all-users export as well.
+ */
+@Composable
+private fun ExportButton(isAdmin: Boolean, isExporting: Boolean, onExport: (all: Boolean) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = { if (isAdmin) menuOpen = true else onExport(false) },
+            enabled = !isExporting
+        ) {
+            if (isExporting) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+            } else {
+                Icon(Icons.Filled.FileDownload, contentDescription = "Ekspor Excel", tint = Color.White)
+            }
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
+                text = { Text("Ekspor project saya") },
+                onClick = {
+                    menuOpen = false
+                    onExport(false)
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Ekspor semua data (admin)") },
+                onClick = {
+                    menuOpen = false
+                    onExport(true)
+                }
+            )
+        }
+    }
 }

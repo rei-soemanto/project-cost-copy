@@ -2,6 +2,7 @@ package com.costproject.app.ui.viewmodel
 
 import com.costproject.app.data.DataError
 import com.costproject.app.domain.model.Project
+import com.costproject.app.ui.util.SaveResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -16,8 +17,11 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -33,8 +37,10 @@ class ProjectListViewModelTest {
     private val b = Project(id = "b", name = "B")
     private val c = Project(id = "c", name = "C")
 
-    private fun TestScope.viewModel(repo: FakeProjectRepository) =
-        ProjectListViewModel(repo, FakeAuthRepository()).also { advanceUntilIdle() }
+    private fun TestScope.viewModel(
+        repo: FakeProjectRepository,
+        export: FakeExportRepository = FakeExportRepository()
+    ) = ProjectListViewModel(repo, FakeAuthRepository(), export).also { advanceUntilIdle() }
 
     private fun TestScope.collectEvents(vm: ProjectListViewModel): List<ProjectListEvent> {
         val events = mutableListOf<ProjectListEvent>()
@@ -121,5 +127,91 @@ class ProjectListViewModelTest {
 
         assertEquals(callsBefore + 1, repo.listCalls)
         assertEquals("A (edited)", vm.projects.single().name)
+    }
+
+    // --- Excel export ---------------------------------------------------------
+
+    @Test
+    fun admin_status_is_loaded_and_a_failed_check_hides_the_admin_option() = runTest {
+        val admin = viewModel(FakeProjectRepository(), FakeExportRepository(admin = Result.success(true)))
+        assertTrue(admin.isAdmin.value)
+
+        val unknown = viewModel(FakeProjectRepository(), FakeExportRepository(admin = Result.failure(DataError.Network())))
+        assertFalse(unknown.isAdmin.value)
+    }
+
+    @Test
+    fun export_downloads_then_asks_the_screen_to_save_holding_the_bytes_until_done() = runTest {
+        val export = FakeExportRepository()
+        val vm = viewModel(FakeProjectRepository(), export)
+        val events = collectEvents(vm)
+
+        vm.export(all = false)
+        advanceUntilIdle()
+
+        assertEquals(1, export.mineCalls)
+        assertEquals(0, export.allCalls)
+        val save = events.filterIsInstance<ProjectListEvent.SaveFile>().single()
+        assertEquals("CostProject-Backup-2026-09-23.xlsx", save.fileName)
+        // Held in the ViewModel, so the picker can read it even after a rotation.
+        assertContentEquals(byteArrayOf(0x50, 0x4B), vm.pendingExportBytes)
+        assertFalse(vm.isExporting.value)
+
+        vm.onExportSaved(SaveResult.Saved)
+        advanceUntilIdle()
+        assertNull(vm.pendingExportBytes)
+        assertEquals("Backup Excel tersimpan.", events.filterIsInstance<ProjectListEvent.ShowMessage>().last().message)
+    }
+
+    @Test
+    fun the_admin_export_calls_the_all_users_endpoint() = runTest {
+        val export = FakeExportRepository(admin = Result.success(true))
+        val vm = viewModel(FakeProjectRepository(), export)
+        vm.export(all = true)
+        advanceUntilIdle()
+        assertEquals(1, export.allCalls)
+        assertEquals(0, export.mineCalls)
+    }
+
+    @Test
+    fun a_cancelled_save_releases_the_file_without_a_message() = runTest {
+        val vm = viewModel(FakeProjectRepository())
+        val events = collectEvents(vm)
+        vm.export(all = false)
+        advanceUntilIdle()
+
+        vm.onExportSaved(SaveResult.Cancelled)
+        advanceUntilIdle()
+
+        assertNull(vm.pendingExportBytes)
+        assertTrue(events.none { it is ProjectListEvent.ShowMessage })
+    }
+
+    @Test
+    fun a_failed_download_shows_the_error_and_offers_no_file() = runTest {
+        val export = FakeExportRepository(file = Result.failure(DataError.Forbidden()))
+        val vm = viewModel(FakeProjectRepository(), export)
+        val events = collectEvents(vm)
+
+        vm.export(all = true)
+        advanceUntilIdle()
+
+        assertTrue(events.none { it is ProjectListEvent.SaveFile })
+        val message = events.filterIsInstance<ProjectListEvent.ShowMessage>().single().message
+        assertEquals(DataError.Forbidden().message, message)
+        assertFalse(vm.isExporting.value)
+    }
+
+    @Test
+    fun a_second_tap_while_downloading_is_ignored() = runTest {
+        val export = FakeExportRepository().apply { delayMillis = 1_000 }
+        val vm = viewModel(FakeProjectRepository(), export)
+
+        vm.export(all = false)
+        assertTrue(vm.isExporting.value)
+        vm.export(all = false)
+        advanceUntilIdle()
+
+        assertEquals(1, export.mineCalls)
     }
 }

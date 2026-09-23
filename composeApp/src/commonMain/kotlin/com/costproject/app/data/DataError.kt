@@ -28,6 +28,9 @@ sealed class DataError(message: String, cause: Throwable? = null) : Exception(me
     /** Duplicate - e.g. an email that is already registered. */
     class Conflict(message: String) : DataError(message)
 
+    /** Signed in, but not allowed - e.g. a non-admin asking for everyone's data. */
+    class Forbidden(message: String = "Anda tidak memiliki akses untuk tindakan ini.") : DataError(message)
+
     class NotFound(message: String = "Data tidak ditemukan.") : DataError(message)
 
     class RateLimited :
